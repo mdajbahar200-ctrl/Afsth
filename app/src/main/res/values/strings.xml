@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Social Addiction</string>
+    <string name="accessibility_service_description">Social Addiction monitors and intercepts short-form video feeds (Reels, Shorts, TikTok) to stop doomscrolling addiction and restore mental focus.</string>
+</resources>

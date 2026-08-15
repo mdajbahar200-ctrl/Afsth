@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Sentry - সুপার এডমিন কন্ট্রোল ড্যাশবোর্ড (Super Admin Dashboard)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              gold: '#F5A623',
+              dark: '#0F1115',
+              card: '#161920',
+              cardSecondary: '#1E222B',
+              accent: '#00E676',
+              danger: '#FF5252',
+              border: '#282C37'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Firebase App & Firestore SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      background-color: #0F1115;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .glass-card {
+      background-color: #161920;
+      border: 1px solid #282C37;
+    }
+    .badge-pro {
+      background: linear-gradient(135deg, #F5A623 0%, #D97706 100%);
+      color: #000;
+      font-weight: 700;
+    }
+    .badge-free {
+      background: rgba(75, 85, 99, 0.4);
+      color: #9CA3AF;
+      border: 1px solid #4B5563;
+      font-weight: 600;
+    }
+    .tab-active {
+      background-color: #F5A623;
+      color: #000000 !important;
+      font-weight: 700;
+    }
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #F5A623;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #F5A623;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-16">
+
+  <!-- Navigation Bar -->
+  <nav class="glass-card sticky top-0 z-50 px-4 sm:px-8 py-3.5 border-b border-brand-border flex items-center justify-between shadow-xl">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 flex items-center justify-center text-black font-black text-xl shadow-lg">
+        🛡️
+      </div>
+      <div>
+        <h1 class="font-bold text-lg text-white leading-tight flex items-center gap-2">
+          Social Sentry <span class="text-[11px] px-2.5 py-0.5 rounded-full badge-pro shadow-sm">SUPER ADMIN</span>
+        </h1>
+        <p class="text-xs text-gray-400">Firebase: <span class="text-brand-gold font-mono font-medium">social-sentry-78d1a</span> &bull; লাইভ কন্ট্রোল</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-3">
+      <button onclick="refreshData()" class="px-3 py-1.5 rounded-xl bg-brand-cardSecondary text-gray-300 hover:text-white border border-brand-border text-xs flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-rotate" id="refreshIcon"></i> <span class="hidden sm:inline">রিফ্রেশ</span>
+      </button>
+      <span id="connectionBadge" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> লাইভ সংযুক্ত
+      </span>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 mt-6 space-y-6">
+
+    <!-- Top KPI Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Total Users -->
+      <div class="glass-card p-4 rounded-2xl">
+        <div class="flex items-center justify-between text-gray-400 text-xs font-semibold">
+          <span>মোট ইউজার (ডিভাইস)</span>
+          <i class="fa-solid fa-users text-brand-gold text-sm"></i>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="statTotalUsers" class="text-2xl sm:text-3xl font-bold text-white">0</span>
+          <span class="text-xs text-gray-400">devices</span>
+        </div>
+      </div>
+
+      <!-- PRO / Paid Subscribers -->
+      <div class="glass-card p-4 rounded-2xl border-amber-500/30">
+        <div class="flex items-center justify-between text-amber-400 text-xs font-bold">
+          <span>PRO গ্রাহক সংখ্যা</span>
+          <i class="fa-solid fa-crown text-brand-gold text-sm"></i>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="statProUsers" class="text-2xl sm:text-3xl font-bold text-brand-gold">0</span>
+          <span class="text-xs text-amber-300/70">লাইফটাইম / পেইড</span>
+        </div>
+      </div>
+
+      <!-- Active Shields -->
+      <div class="glass-card p-4 rounded-2xl">
+        <div class="flex items-center justify-between text-gray-400 text-xs font-semibold">
+          <span>সক্রিয় শিল্ড (SHIELDS)</span>
+          <i class="fa-solid fa-shield-halved text-emerald-400 text-sm"></i>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="statActiveShields" class="text-2xl sm:text-3xl font-bold text-emerald-400">0</span>
+          <span class="text-xs text-gray-400">blocking now</span>
+        </div>
+      </div>
+
+      <!-- Total Interceptions -->
+      <div class="glass-card p-4 rounded-2xl">
+        <div class="flex items-center justify-between text-gray-400 text-xs font-semibold">
+          <span>মোট রিলস আটকানো হয়েছে</span>
+          <i class="fa-solid fa-ban text-red-400 text-sm"></i>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span id="statTotalBlocked" class="text-2xl sm:text-3xl font-bold text-red-400">0</span>
+          <span class="text-xs text-gray-400">reels blocked</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center space-x-2 bg-brand-cardSecondary p-1.5 rounded-2xl border border-brand-border">
+      <button onclick="switchTab('featuresTab')" id="btnFeaturesTab" class="tab-active flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition">
+        <i class="fa-solid fa-sliders"></i> ফিচার ও PRO / FREE কন্ট্রোল
+      </button>
+      <button onclick="switchTab('usersTab')" id="btnUsersTab" class="flex-1 py-2.5 rounded-xl text-xs text-gray-300 hover:text-white font-semibold flex items-center justify-center gap-2 transition">
+        <i class="fa-solid fa-user-gear"></i> ইউজার ও সাবস্ক্রিপশন
+      </button>
+      <button onclick="switchTab('broadcastTab')" id="btnBroadcastTab" class="flex-1 py-2.5 rounded-xl text-xs text-gray-300 hover:text-white font-semibold flex items-center justify-center gap-2 transition">
+        <i class="fa-solid fa-bullhorn"></i> গ্লোবাল নোটিশ ও অ্যালার্ট
+      </button>
+    </div>
+
+    <!-- TAB 1: FEATURES & PRO/FREE TIER CONTROLLER -->
+    <section id="featuresTab" class="space-y-4">
+      <div class="glass-card p-5 rounded-2xl border-brand-border">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-brand-border">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-wand-magic-sparkles text-brand-gold"></i> অ্যাপের সকল ফিচারের PRO / FREE কন্ট্রোল প্যানেল
+            </h2>
+            <p class="text-xs text-gray-400 mt-1">
+              যেকোনো ফিচারকে এক ক্লিকেই <strong>সম্পূর্ণ ফ্রি (Free)</strong> অথবা <strong>পেইড প্রো (PRO)</strong> হিসেবে সেট করুন। অ্যাপ ওপেন করলেই লাইভ আপডেট হবে!
+            </p>
+          </div>
+          <button onclick="saveAllFeatureTiers()" class="bg-brand-gold hover:bg-amber-500 text-black font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shrink-0 shadow-md">
+            <i class="fa-solid fa-floppy-disk"></i> সেভ ও লাইভ রিলিজ করুন
+          </button>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-4" id="featureCardsList">
+          <!-- Will be rendered dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: USER MANAGEMENT & SUBSCRIPTION -->
+    <section id="usersTab" class="space-y-4 hidden">
+      <div class="glass-card rounded-2xl overflow-hidden">
+        <!-- Section Header & Filter -->
+        <div class="p-4 sm:p-5 border-b border-brand-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-user-gear text-brand-gold"></i> ইউজার তালিকা ও সাবস্ক্রিপশন এক্টিভেশন
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">যেকোনো ব্যবহারকারীকে সরাসরি PRO লাইফটাইম এক্সেস প্রদান বা বাতিল করুন</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+              <input id="searchInput" oninput="filterUsers()" type="text" placeholder="নাম / ইমেইল / ডিভাইস আইডি খুঁজুন..." 
+                     class="bg-brand-cardSecondary border border-brand-border text-xs text-white rounded-xl pl-8 pr-3 py-2 w-48 sm:w-64 focus:outline-none focus:border-brand-gold">
+            </div>
+            <select id="filterPro" onchange="filterUsers()" class="bg-brand-cardSecondary border border-brand-border text-xs text-white rounded-xl px-3 py-2 focus:outline-none focus:border-brand-gold">
+              <option value="all">সব ইউজার</option>
+              <option value="pro">⭐ শুধু PRO ইউজার</option>
+              <option value="free">⚪ শুধু Free ইউজার</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- User List Container -->
+        <div id="usersContainer" class="p-4 space-y-3">
+          <div class="text-center py-12 text-gray-400 text-sm">
+            <i class="fa-solid fa-circle-notch fa-spin text-brand-gold text-2xl mb-2"></i>
+            <p>ফায়ারবেস ক্লাউড থেকে ইউজার লোড হচ্ছে...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: GLOBAL BROADCAST / NOTICE BANNER -->
+    <section id="broadcastTab" class="space-y-4 hidden">
+      <div class="glass-card p-6 rounded-2xl border-brand-border space-y-4">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-bullhorn text-brand-gold"></i> গ্লোবাল অ্যাপ ব্রডকাস্ট নোটিশ (Global App Notice)
+          </h2>
+          <p class="text-xs text-gray-400 mt-1">সব ইউজারের অ্যাপের হোম স্ক্রিনে সাথে সাথে পপ-আপ মেসেজ বা নোটিশ ব্যানার প্রদর্শন করুন।</p>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-gray-300">নোটিশ বা এনাউন্সমেন্ট টেক্সট লিখুন:</label>
+          <textarea id="broadcastInput" rows="3" placeholder="যেমন: 🎉 Social Sentry নতুন ২.০ আপডেট রিলিজ হয়েছে! রিলস ব্লকার আরও দ্রুত কাজ করছে..." 
+                    class="w-full bg-brand-cardSecondary border border-brand-border text-xs text-white rounded-xl p-3 focus:outline-none focus:border-brand-gold"></textarea>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button onclick="sendGlobalNotice()" class="bg-brand-gold hover:bg-amber-600 text-black text-xs font-bold px-5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md">
+            <i class="fa-solid fa-paper-plane"></i> সকল ইউজারের অ্যাপে পাঠিয়ে দিন
+          </button>
+          <button onclick="clearGlobalNotice()" class="bg-brand-cardSecondary hover:bg-red-500/20 text-gray-300 hover:text-red-400 text-xs font-semibold px-4 py-2.5 rounded-xl border border-brand-border transition">
+            <i class="fa-solid fa-trash-can"></i> নোটিশ রিমুভ করুন
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="glass-card max-w-md w-full rounded-2xl p-6 border-brand-border space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center pb-2 border-b border-brand-border">
+        <h3 class="font-bold text-white text-base">ইউজার সাবস্ক্রিপশন নিয়ন্ত্রণ</h3>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-gray-400 block mb-1">User Device ID</label>
+          <input id="modalDeviceId" type="text" readonly class="w-full bg-black/40 border border-brand-border rounded-lg p-2 text-gray-300 font-mono">
+        </div>
+        <div>
+          <label class="text-gray-400 block mb-1">User Name / Email</label>
+          <input id="modalUserName" type="text" readonly class="w-full bg-black/40 border border-brand-border rounded-lg p-2 text-gray-300">
+        </div>
+        <div>
+          <label class="text-gray-400 block mb-1 font-semibold text-brand-gold">সাবস্ক্রিপশন প্ল্যান (Subscription Plan)</label>
+          <select id="modalProSelect" class="w-full bg-brand-cardSecondary border border-brand-border rounded-lg p-2.5 text-white font-semibold focus:border-brand-gold">
+            <option value="true">⭐ PRO / Lifetime VIP Access (সব ফিচার আনলক)</option>
+            <option value="false">⚪ Free Tier (ফ্রি ইউজার)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-gray-400 block mb-1">ইউজারের জন্য পার্সোনাল মেসেজ (Personal Announcement)</label>
+          <input id="modalCustomMessage" type="text" placeholder="যেমন: আপনার প্রো সাবস্ক্রিপশন একটিভ হয়েছে!" class="w-full bg-brand-cardSecondary border border-brand-border rounded-lg p-2 text-white focus:outline-none focus:border-brand-gold">
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeModal()" class="w-1/2 py-2.5 rounded-xl bg-brand-cardSecondary text-gray-300 hover:text-white border border-brand-border text-xs font-semibold">
+          বাতিল
+        </button>
+        <button onclick="saveUserChanges()" class="w-1/2 py-2.5 rounded-xl bg-brand-gold text-black hover:bg-amber-500 text-xs font-bold shadow-md">
+          সেভ করুন
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Script Logic -->
+  <script>
+    // Exact User Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyCvNHhfp6bCdhykxy1v3sSygaPcvW8i5Dk",
+      authDomain: "social-sentry-78d1a.firebaseapp.com",
+      projectId: "social-sentry-78d1a",
+      storageBucket: "social-sentry-78d1a.firebasestorage.app",
+      messagingSenderId: "525297007013",
+      appId: "1:525297007013:web:b4df4845776a75645c104c",
+      measurementId: "G-R1S7P8GCT8"
+    };
+
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
+    // App Features Master Definitions
+    const APP_FEATURES = [
+      { key: "reels_block", name: "Reels & Shorts Blocker", desc: "সোশ্যাল মিডিয়ার রিলস ও শর্টস স্বয়ংক্রিয়ভাবে ব্লক করা", icon: "fa-film", defaultPro: false, category: "BLOCKING" },
+      { key: "prime_mode", name: "Prime Mode (কঠিন লক)", desc: "আনইনস্টল ও সেটিংস বাইপাস প্রতিরোধ হার্ডকোর মোড", icon: "fa-shield-halved", defaultPro: true, category: "PRIME" },
+      { key: "uninstall_protection", name: "Uninstall Protection", desc: "ডিভাইস এডমিন দিয়ে অ্যাপ আনইনস্টল বন্ধ করা", icon: "fa-lock", defaultPro: true, category: "PRIME" },
+      { key: "lock_phone", name: "Lock My Phone (ডিজিটাল ডিটক্স)", desc: "নির্দিষ্ট সময়ের জন্য ফোন লকডাউন করা", icon: "fa-mobile-screen-button", defaultPro: false, category: "PRIME" },
+      { key: "porn_block", name: "Porn & Nudity Blocker", desc: "এডাল্ট কন্টেন্ট ও ওয়েবসাইট স্বয়ংক্রিয় ফিল্টারিং", icon: "fa-ban", defaultPro: false, category: "BLOCKING" },
+      { key: "website_block", name: "Website Blocker", desc: "নির্দিষ্ট ওয়েবসাইট ও ডোমেইন ব্লক করার সুবিধা", icon: "fa-globe", defaultPro: false, category: "BLOCKING" },
+      { key: "app_block", name: "App Blocker (সম্পূর্ণ ব্লক)", desc: "নির্দিষ্ট ক্ষতিকর অ্যাপ সম্পূর্ণ বন্ধ রাখা", icon: "fa-cubes", defaultPro: false, category: "BLOCKING" },
+      { key: "five_second_pause", name: "5 Second Mindfulness Pause", desc: "অ্যাপ খোলার আগে ৫ সেকেন্ড সচেতনতা বিরতি", icon: "fa-hourglass-half", defaultPro: false, category: "LIMITS" },
+      { key: "app_limits", name: "App Limits (দৈনিক সীমা)", desc: "প্রতিটি অ্যাপের জন্য দৈনিক স্ক্রিনটাইম লিমিট", icon: "fa-clock", defaultPro: false, category: "LIMITS" },
+      { key: "scroll_limit", name: "Endless Scroll Limit", desc: "অতিরিক্ত স্ক্রলিং করলে স্পিডবাম্প বিরতি", icon: "fa-arrows-up-down", defaultPro: true, category: "LIMITS" },
+      { key: "schedule_block", name: "Schedule Blocker (রুটিন ব্লক)", desc: "অফিস বা পড়ার টাইমে স্বয়ংক্রিয় লকডাউন রুটিন", icon: "fa-calendar-days", defaultPro: true, category: "SCHEDULE" },
+      { key: "block_notifications", name: "Notification Filter & Mute", desc: "ডিসট্রাক্টিং নোটিফিকেশন ফিল্টার করা", icon: "fa-bell-slash", defaultPro: false, category: "SCHEDULE" },
+      { key: "fahh_mode", name: "Fahh Sound Mod", desc: "রিলস খুললে মজার Fahh সাউন্ড প্লে হওয়া", icon: "fa-volume-high", defaultPro: false, category: "MODS" },
+      { key: "rag_korla", name: "Rag Korla ! Voice Mod", desc: "ব্লক হলে ভয়েস সতর্কতা বাজানো", icon: "fa-bullhorn", defaultPro: false, category: "MODS" },
+      { key: "custom_themes", name: "VIP Cyberpunk & Themes", desc: "সাইবারপাঙ্ক ও ১০টি প্রিমিয়াম ভিজ্যুয়াল কালারওয়ে", icon: "fa-palette", defaultPro: true, category: "MODS" }
+    ];
+
+    let currentFeatureTiers = {};
+    let allUsersData = [];
+
+    // Tab Navigation
+    function switchTab(tabId) {
+      document.getElementById("featuresTab").classList.add("hidden");
+      document.getElementById("usersTab").classList.add("hidden");
+      document.getElementById("broadcastTab").classList.add("hidden");
+
+      document.getElementById("btnFeaturesTab").className = "flex-1 py-2.5 rounded-xl text-xs text-gray-300 hover:text-white font-semibold flex items-center justify-center gap-2 transition";
+      document.getElementById("btnUsersTab").className = "flex-1 py-2.5 rounded-xl text-xs text-gray-300 hover:text-white font-semibold flex items-center justify-center gap-2 transition";
+      document.getElementById("btnBroadcastTab").className = "flex-1 py-2.5 rounded-xl text-xs text-gray-300 hover:text-white font-semibold flex items-center justify-center gap-2 transition";
+
+      document.getElementById(tabId).classList.remove("hidden");
+
+      if (tabId === "featuresTab") {
+        document.getElementById("btnFeaturesTab").className = "tab-active flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition";
+      } else if (tabId === "usersTab") {
+        document.getElementById("btnUsersTab").className = "tab-active flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition";
+      } else if (tabId === "broadcastTab") {
+        document.getElementById("btnBroadcastTab").className = "tab-active flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition";
+      }
+    }
+
+    // Fetch and sync global feature tiers
+    function subscribeToFeatureTiers() {
+      db.collection("app_config").doc("features").onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          currentFeatureTiers = {};
+          APP_FEATURES.forEach(f => {
+            currentFeatureTiers[f.key] = data["pro_" + f.key] !== undefined ? data["pro_" + f.key] : f.defaultPro;
+          });
+          if (data.global_announcement) {
+            document.getElementById("broadcastInput").value = data.global_announcement;
+          }
+        } else {
+          // Initialize defaults
+          currentFeatureTiers = {};
+          APP_FEATURES.forEach(f => {
+            currentFeatureTiers[f.key] = f.defaultPro;
+          });
+        }
+        renderFeatureCards();
+      });
+    }
+
+    function renderFeatureCards() {
+      const container = document.getElementById("featureCardsList");
+      let html = "";
+
+      APP_FEATURES.forEach(feature => {
+        const isPro = currentFeatureTiers[feature.key] === true;
+
+        html += `
+          <div class="bg-brand-cardSecondary p-4 rounded-xl border border-brand-border flex flex-col justify-between hover:border-gray-600 transition space-y-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-lg bg-brand-card flex items-center justify-center text-brand-gold shrink-0 border border-brand-border">
+                  <i class="fa-solid ${feature.icon} text-sm"></i>
+                </div>
+                <div>
+                  <h4 class="font-bold text-white text-xs">${feature.name}</h4>
+                  <span class="text-[10px] text-gray-400">${feature.category}</span>
+                </div>
+              </div>
+              <span id="badge_${feature.key}" class="${isPro ? 'badge-pro' : 'badge-free'} px-2 py-0.5 rounded text-[10px] uppercase">
+                ${isPro ? '⭐ PRO' : '⚪ FREE'}
+              </span>
+            </div>
+
+            <p class="text-[11px] text-gray-400 leading-snug">
+              ${feature.desc}
+            </p>
+
+            <div class="pt-2 border-t border-brand-border flex items-center justify-between">
+              <span class="text-[11px] font-medium text-gray-300">ফিচার স্ট্যাটাস:</span>
+              <div class="flex items-center gap-2">
+                <button onclick="setFeatureTier('${feature.key}', false)" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${!isPro ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-brand-card text-gray-400 hover:text-white border border-brand-border'}">
+                  Free
+                </button>
+                <button onclick="setFeatureTier('${feature.key}', true)" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${isPro ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-brand-card text-gray-400 hover:text-white border border-brand-border'}">
+                  PRO ⭐
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function setFeatureTier(featureKey, isPro) {
+      currentFeatureTiers[featureKey] = isPro;
+      renderFeatureCards();
+    }
+
+    function saveAllFeatureTiers() {
+      const updatePayload = {};
+      APP_FEATURES.forEach(f => {
+        updatePayload["pro_" + f.key] = currentFeatureTiers[f.key] === true;
+      });
+
+      db.collection("app_config").doc("features").set(updatePayload, { merge: true })
+        .then(() => {
+          alert("✅ সকল ফিচারের PRO/FREE সেটিংস ফায়ারবেস ক্লাউডে সফলভাবে সেভ হয়েছে! সকল ইউজারের ডিভাইসে এটি তাৎক্ষণিক কার্যকর হবে।");
+        })
+        .catch(err => {
+          alert("ত্রুটি: " + err.message);
+        });
+    }
+
+    // Realtime User Synchronization
+    function subscribeToUsers() {
+      db.collection("users").onSnapshot((snapshot) => {
+        allUsersData = [];
+        let proCount = 0;
+        let activeShields = 0;
+        let totalBlocked = 0;
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const user = {
+            id: doc.id,
+            deviceId: data.deviceId || doc.id,
+            name: data.name || "App User",
+            username: data.username || "@user",
+            email: data.email || "No email",
+            isPro: data.isPro === true,
+            totalBlockedCount: parseInt(data.totalBlockedCount) || 0,
+            isMasterShieldActive: data.isMasterShieldActive === true,
+            streakDays: parseInt(data.streakDays) || 0,
+            karmaXp: parseInt(data.karmaXp) || 0,
+            deviceModel: data.deviceModel || "Android Device",
+            androidVersion: data.androidVersion || "Android 14",
+            lastActiveTimestamp: data.lastActiveTimestamp || 0,
+            adminAnnouncement: data.adminAnnouncement || ""
+          };
+          allUsersData.push(user);
+
+          if (user.isPro) proCount++;
+          if (user.isMasterShieldActive) activeShields++;
+          totalBlocked += user.totalBlockedCount;
+        });
+
+        // Update KPIs
+        document.getElementById("statTotalUsers").innerText = allUsersData.length;
+        document.getElementById("statProUsers").innerText = proCount;
+        document.getElementById("statActiveShields").innerText = activeShields;
+        document.getElementById("statTotalBlocked").innerText = totalBlocked;
+
+        renderUsers(allUsersData);
+      }, (error) => {
+        console.error("Firestore error:", error);
+        document.getElementById("usersContainer").innerHTML = `
+          <div class="p-6 text-center text-red-400 text-xs">
+            <i class="fa-solid fa-triangle-exclamation text-xl mb-2"></i>
+            <p>ডাটাবেজ সংযোগে সমস্যা: ${error.message}</p>
+          </div>
+        `;
+      });
+    }
+
+    function renderUsers(users) {
+      const container = document.getElementById("usersContainer");
+      if (users.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 text-gray-400 text-xs">
+            <i class="fa-solid fa-mobile-screen text-2xl text-gray-500 mb-2"></i>
+            <p>এখনো কোনো ইউজার কানেক্ট হয়নি।</p>
+            <p class="text-gray-500 mt-1">মোবাইল অ্যাপটি ওপেন করলে স্বয়ংক্রিয়ভাবে এখানে তালিকাভুক্ত হবে।</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = "";
+      users.forEach((user) => {
+        const proBadge = user.isPro 
+          ? `<span class="badge-pro px-2 py-0.5 rounded text-[10px] tracking-wide">⭐ PRO</span>`
+          : `<span class="badge-free px-2 py-0.5 rounded text-[10px]">FREE</span>`;
+
+        const shieldStatus = user.isMasterShieldActive 
+          ? `<span class="text-emerald-400 text-xs flex items-center gap-1"><i class="fa-solid fa-shield-check"></i> শিল্ড সক্রিয়</span>`
+          : `<span class="text-gray-500 text-xs flex items-center gap-1"><i class="fa-solid fa-shield"></i> নিষ্ক্রিয়</span>`;
+
+        html += `
+          <div class="bg-brand-cardSecondary p-4 rounded-xl border border-brand-border hover:border-gray-600 transition flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-full bg-brand-border flex items-center justify-center font-bold text-white shrink-0">
+                ${user.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="font-bold text-white text-sm">${user.name}</h4>
+                  ${proBadge}
+                </div>
+                <p class="text-xs text-gray-400 font-mono">${user.email} &bull; <span class="text-gray-500">${user.username}</span></p>
+                <div class="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                  <span>📱 ${user.deviceModel}</span>
+                  <span>🔥 ${user.streakDays} দিন স্ট্রিক</span>
+                  <span>🚫 ${user.totalBlockedCount} ব্লকড</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between md:justify-end gap-2 pt-2 md:pt-0 border-t md:border-0 border-brand-border">
+              <div class="mr-2">
+                ${shieldStatus}
+              </div>
+
+              ${user.isPro ? `
+                <button onclick="togglePro('${user.id}', false)" class="px-3 py-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-semibold transition">
+                  Revoke PRO
+                </button>
+              ` : `
+                <button onclick="togglePro('${user.id}', true)" class="px-3 py-1.5 rounded-lg bg-brand-gold text-black hover:bg-amber-500 text-xs font-bold transition flex items-center gap-1 shadow-md">
+                  <i class="fa-solid fa-crown"></i> Make PRO ⭐
+                </button>
+              `}
+
+              <button onclick="openEditModal('${user.id}')" class="p-2 rounded-lg bg-brand-card text-gray-300 hover:text-white border border-brand-border text-xs">
+                <i class="fa-solid fa-gear"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function togglePro(userId, makePro) {
+      db.collection("users").doc(userId).set({
+        isPro: makePro,
+        adminAnnouncement: makePro ? "🎉 অভিনন্দন! আপনার একাউন্ট সুপার এডমিন কর্তৃক PRO তে আপগ্রেড করা হয়েছে।" : ""
+      }, { merge: true }).then(() => {
+        console.log("Pro status updated!");
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    function openEditModal(userId) {
+      const user = allUsersData.find(u => u.id === userId);
+      if (!user) return;
+      document.getElementById("modalDeviceId").value = user.id;
+      document.getElementById("modalUserName").value = `${user.name} (${user.email})`;
+      document.getElementById("modalProSelect").value = user.isPro ? "true" : "false";
+      document.getElementById("modalCustomMessage").value = user.adminAnnouncement || "";
+      document.getElementById("editUserModal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("editUserModal").classList.add("hidden");
+    }
+
+    function saveUserChanges() {
+      const userId = document.getElementById("modalDeviceId").value;
+      const isPro = document.getElementById("modalProSelect").value === "true";
+      const message = document.getElementById("modalCustomMessage").value;
+
+      db.collection("users").doc(userId).set({
+        isPro: isPro,
+        adminAnnouncement: message
+      }, { merge: true }).then(() => {
+        closeModal();
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    function sendGlobalNotice() {
+      const notice = document.getElementById("broadcastInput").value.trim();
+      if (!notice) return alert("মেসেজ লিখুন!");
+
+      db.collection("app_config").doc("features").set({
+        global_announcement: notice
+      }, { merge: true }).then(() => {
+        alert("✅ সকল ইউজারের ডিভাইসে গ্লোবাল নোটিশ পাঠানো হয়েছে!");
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    function clearGlobalNotice() {
+      db.collection("app_config").doc("features").set({
+        global_announcement: ""
+      }, { merge: true }).then(() => {
+        document.getElementById("broadcastInput").value = "";
+        alert("গ্লোবাল নোটিশ মুছে ফেলা হয়েছে!");
+      }).catch(err => alert("Error: " + err.message));
+    }
+
+    function filterUsers() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const filter = document.getElementById("filterPro").value;
+
+      const filtered = allUsersData.filter(user => {
+        const matchesQuery = user.name.toLowerCase().includes(query) || 
+                             user.email.toLowerCase().includes(query) || 
+                             user.id.toLowerCase().includes(query);
+        if (!matchesQuery) return false;
+
+        if (filter === "pro") return user.isPro;
+        if (filter === "free") return !user.isPro;
+        return true;
+      });
+
+      renderUsers(filtered);
+    }
+
+    function refreshData() {
+      const icon = document.getElementById("refreshIcon");
+      icon.classList.add("fa-spin");
+      setTimeout(() => {
+        icon.classList.remove("fa-spin");
+      }, 1000);
+    }
+
+    // Start Realtime Sync
+    subscribeToFeatureTiers();
+    subscribeToUsers();
+  </script>
+</body>
+</html>
