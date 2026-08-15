@@ -1,6 +1,0 @@
-{
-  "name": "Social Addiction",
-  "description": "Powerful digital dopamine detox and addiction blocker that surgically intercepts reels, shorts, and doomscroll traps.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
